@@ -1,0 +1,66 @@
+To create an Ansible playbook to upgrade from Fedora 38 to Fedora 39, you can follow these steps. Please note that you should have Ansible installed on your control machine and SSH access to the target Fedora 38 machine for this playbook to work.
+
+
+1. Create an inventory file (e.g., `inventory.ini`) to specify the target host where you want to perform the upgrade. Replace `target_host` with the actual IP address or hostname of your Fedora 38 machine:
+
+```ini
+[target]
+target_host ansible_ssh_user=your_ssh_user
+```
+
+2. Create a playbook file (e.g., `upgrade_fedora.yml`) with the following content:
+
+```yaml
+---
+- name: Upgrade Fedora 38 to Fedora 39
+  hosts: target
+  become: yes
+  tasks:
+    - name: Ensure the system is up to date
+      dnf:
+        name: '*'
+        state: latest
+      when: ansible_distribution == 'Fedora'
+
+    - name: Update the system to Fedora 39
+      command: dnf system-upgrade download --releasever=39 --setopt=deltarpm=false -y
+      when: ansible_distribution == 'Fedora'
+
+    - name: Reboot the system to apply the upgrade
+      command: dnf system-upgrade reboot -y
+      async: 0
+      poll: 0
+      when: ansible_distribution == 'Fedora'
+
+    - name: Wait for the system to come back online
+      wait_for_connection:
+        timeout: 600
+      when: ansible_distribution == 'Fedora'
+
+    - name: Perform the upgrade
+      command: dnf system-upgrade upgrade -y
+      when: ansible_distribution == 'Fedora'
+
+    - name: Reboot the system after the upgrade
+      command: reboot
+      async: 0
+      poll: 0
+      when: ansible_distribution == 'Fedora'
+```
+
+This playbook performs the following steps:
+
+- Ensures that the system is up to date using `dnf`.
+- Downloads the packages required for the Fedora 39 upgrade.
+- Reboots the system to apply the upgrade.
+- Waits for the system to come back online.
+- Performs the upgrade.
+- Reboots the system again to complete the upgrade.
+
+3. Run the Ansible playbook using the following command:
+
+```bash
+ansible-playbook -i inventory.ini upgrade_fedora.yml
+```
+
+This playbook will upgrade your Fedora 38 system to Fedora 39. Make sure to back up any important data and configurations before running this upgrade process, as system upgrades can sometimes lead to unforeseen issues.
